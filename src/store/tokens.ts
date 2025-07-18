@@ -2,8 +2,7 @@ import { atom } from "jotai";
 
 // Get initial token from localStorage
 const getInitialToken = (): string | null => {
-  // Hardcoded token as requested
-  return "3460a9d2f55f4c4dbf7d139c749e17ae";
+  return localStorage.getItem('tavus-token');
 };
 
 // Atom to store the API token

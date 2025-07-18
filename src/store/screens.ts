@@ -20,7 +20,7 @@ interface ScreenState {
 }
 
 const initialScreenState: ScreenState = {
-  currentScreen: "interviewChat",
+  currentScreen: "introLoading",
 };
 
 export const screenAtom = atom<ScreenState>(initialScreenState);
