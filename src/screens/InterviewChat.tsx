@@ -24,6 +24,7 @@ import {
   PhoneIcon,
   Send,
   Download,
+  AlertCircle,
 } from "lucide-react";
 import {
   clearSessionTime,
@@ -47,6 +48,12 @@ interface ChatMessage {
   category?: string;
 }
 
+interface GuidelineExample {
+  type: 'strong' | 'acceptable' | 'avoid';
+  title: string;
+  content: string;
+}
+
 export const InterviewChat: React.FC = () => {
   const [conversation, setConversation] = useAtom(conversationAtom);
   const [, setScreenState] = useAtom(screenAtom);
@@ -54,6 +61,27 @@ export const InterviewChat: React.FC = () => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputMessage, setInputMessage] = useState("");
   const [isInitializing, setIsInitializing] = useState(true);
+  const [connectionError, setConnectionError] = useState<string | null>(null);
+  const [conversationPhase, setConversationPhase] = useState<'intro' | 'technical' | 'experience' | 'closing'>('intro');
+  
+  // Dynamic guidelines based on conversation phase
+  const [guidelines, setGuidelines] = useState<GuidelineExample[]>([
+    {
+      type: 'strong',
+      title: 'Ready to Begin',
+      content: 'Welcome! Your interview with Sarah Mitchell is about to start. She will introduce herself and begin with some general questions about your background.'
+    },
+    {
+      type: 'acceptable',
+      title: 'Interview Process',
+      content: 'This interview will cover your experience, technical skills, and career goals. Feel free to provide detailed examples and ask questions.'
+    },
+    {
+      type: 'avoid',
+      title: 'Getting Connected',
+      content: 'Please ensure your camera and microphone are enabled. The AI interviewer will join shortly to begin the conversation.'
+    }
+  ]);
 
   const daily = useDaily();
   const localSessionId = useLocalSessionId();
@@ -64,16 +92,92 @@ export const InterviewChat: React.FC = () => {
   const remoteParticipantIds = useParticipantIds({ filter: "remote" });
   const [start, setStart] = useState(false);
 
-  // Initialize conversation on component mount
+  // Update guidelines based on conversation context
+  const updateGuidelinesBasedOnPhase = (phase: string, lastMessage?: string) => {
+    switch (phase) {
+      case 'intro':
+        setGuidelines([
+          {
+            type: 'strong',
+            title: 'Strong Introduction',
+            content: 'Hi Sarah! I\'m excited about this opportunity. I have 3 years of experience in full-stack development, specializing in React and Node.js. I\'ve led several successful projects including an e-commerce platform that increased sales by 40%.'
+          },
+          {
+            type: 'acceptable',
+            title: 'Good Introduction',
+            content: 'Hello! I\'m a software developer with experience in web development. I\'ve worked on various projects using modern technologies.'
+          },
+          {
+            type: 'avoid',
+            title: 'Avoid Generic Responses',
+            content: 'Hi. I\'m looking for a job and I think I can do this role. I don\'t have much experience but I\'m willing to learn.'
+          }
+        ]);
+        break;
+      case 'technical':
+        setGuidelines([
+          {
+            type: 'strong',
+            title: 'Technical Excellence',
+            content: 'I implemented a microservices architecture using Docker and Kubernetes, which improved system scalability by 60%. I used Redis for caching and implemented CI/CD pipelines with Jenkins.'
+          },
+          {
+            type: 'acceptable',
+            title: 'Technical Competence',
+            content: 'I\'ve worked with React, Node.js, and MongoDB. I understand the basics of system design and have experience with APIs.'
+          },
+          {
+            type: 'avoid',
+            title: 'Avoid Vague Answers',
+            content: 'I know some programming languages. I\'ve used frameworks before but can\'t remember the details.'
+          }
+        ]);
+        break;
+      case 'experience':
+        setGuidelines([
+          {
+            type: 'strong',
+            title: 'Detailed Experience',
+            content: 'In my previous role at TechCorp, I led a team of 4 developers to rebuild their legacy system. We reduced load times by 70% and improved user satisfaction scores from 3.2 to 4.8.'
+          },
+          {
+            type: 'acceptable',
+            title: 'Relevant Experience',
+            content: 'I worked on several projects where I collaborated with cross-functional teams and delivered features on time.'
+          },
+          {
+            type: 'avoid',
+            title: 'Avoid Minimal Details',
+            content: 'I did some projects. They went okay. I worked with other people sometimes.'
+          }
+        ]);
+        break;
+      default:
+        break;
+    }
+  };
+
+  // Initialize conversation with better error handling
   useEffect(() => {
     const initializeConversation = async () => {
       if (!conversation && token && isInitializing) {
         try {
+          console.log("Initializing conversation with token:", token?.substring(0, 8) + "...");
+          
+          // Validate token format
+          if (!token || token.length < 20) {
+            throw new Error("Invalid API token format");
+          }
+
           const newConversation = await createConversation(token);
+          console.log("Conversation created successfully:", newConversation.conversation_id);
           setConversation(newConversation);
-          setIsInitializing(false);
-        } catch (error) {
+          setConnectionError(null);
+        } catch (error: any) {
           console.error("Failed to create conversation:", error);
+          const errorMessage = error.message || "Unknown error occurred";
+          setConnectionError(`Connection failed: ${errorMessage}`);
+        } finally {
           setIsInitializing(false);
         }
       }
@@ -82,30 +186,56 @@ export const InterviewChat: React.FC = () => {
     initializeConversation();
   }, [conversation, token, isInitializing, setConversation]);
 
-  // Listen for AI messages
+  // Listen for AI messages and update guidelines dynamically
   useDailyEvent(
     "app-message",
     useCallback((ev: any) => {
+      console.log("Received app message:", ev.data);
+      
       if (ev.data?.event_type === "conversation.speech") {
         const aiMessage: ChatMessage = {
           id: Date.now().toString(),
           type: 'ai',
           content: ev.data.properties?.text || "",
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
-          category: 'Introduction'
+          timestamp: new Date().toLocaleTimeString([], { 
+            hour: '2-digit', 
+            minute: '2-digit', 
+            second: '2-digit' 
+          }),
+          category: 'Interview'
         };
+        
         setMessages(prev => [...prev, aiMessage]);
+        
+        // Determine conversation phase and update guidelines
+        const messageContent = aiMessage.content.toLowerCase();
+        if (messageContent.includes('technical') || messageContent.includes('programming') || messageContent.includes('code')) {
+          setConversationPhase('technical');
+          updateGuidelinesBasedOnPhase('technical', aiMessage.content);
+        } else if (messageContent.includes('experience') || messageContent.includes('project') || messageContent.includes('work')) {
+          setConversationPhase('experience');
+          updateGuidelinesBasedOnPhase('experience', aiMessage.content);
+        } else if (messages.length === 0) {
+          setConversationPhase('intro');
+          updateGuidelinesBasedOnPhase('intro', aiMessage.content);
+        }
       }
-    }, [])
+    }, [messages.length])
   );
 
+  // Handle participant joining
   useEffect(() => {
     if (remoteParticipantIds.length && !start) {
+      console.log("Remote participant joined, starting conversation");
       setStart(true);
-      setTimeout(() => daily?.setLocalAudio(true), 4000);
+      setTimeout(() => {
+        daily?.setLocalAudio(true);
+        console.log("Audio enabled");
+      }, 2000);
     }
-  }, [remoteParticipantIds, start]);
+  }, [remoteParticipantIds, start, daily]);
 
+  // Session time management
   useEffect(() => {
     if (!remoteParticipantIds.length || !start) return;
 
@@ -122,20 +252,27 @@ export const InterviewChat: React.FC = () => {
     return () => clearInterval(interval);
   }, [remoteParticipantIds, start]);
 
+  // Join Daily call when conversation is ready
   useEffect(() => {
-    if (conversation?.conversation_url) {
+    if (conversation?.conversation_url && daily) {
+      console.log("Joining Daily call:", conversation.conversation_url);
       daily
-        ?.join({
+        .join({
           url: conversation.conversation_url,
           startVideoOff: false,
           startAudioOff: true,
         })
         .then(() => {
-          daily?.setLocalVideo(true);
-          daily?.setLocalAudio(false);
+          console.log("Successfully joined Daily call");
+          daily.setLocalVideo(true);
+          daily.setLocalAudio(false);
+        })
+        .catch((error) => {
+          console.error("Failed to join Daily call:", error);
+          setConnectionError("Failed to join video call");
         });
     }
-  }, [conversation?.conversation_url]);
+  }, [conversation?.conversation_url, daily]);
 
   const toggleVideo = useCallback(() => {
     daily?.setLocalVideo(!isCameraEnabled);
@@ -162,16 +299,20 @@ export const InterviewChat: React.FC = () => {
         id: Date.now().toString(),
         type: 'user',
         content: inputMessage,
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+        timestamp: new Date().toLocaleTimeString([], { 
+          hour: '2-digit', 
+          minute: '2-digit', 
+          second: '2-digit' 
+        })
       };
       setMessages(prev => [...prev, newMessage]);
       
       // Send message to AI via Daily
-      if (daily) {
+      if (daily && conversation?.conversation_id) {
         daily.sendAppMessage({
           message_type: "conversation",
           event_type: "conversation.echo",
-          conversation_id: conversation?.conversation_id,
+          conversation_id: conversation.conversation_id,
           properties: {
             modality: "text",
             text: inputMessage,
@@ -188,6 +329,12 @@ export const InterviewChat: React.FC = () => {
       e.preventDefault();
       handleSendMessage();
     }
+  };
+
+  const retryConnection = () => {
+    setConnectionError(null);
+    setIsInitializing(true);
+    setConversation(null);
   };
 
   return (
@@ -217,19 +364,36 @@ export const InterviewChat: React.FC = () => {
               <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
               Sarah Mitchell
             </div>
-            {remoteParticipantIds?.length > 0 ? (
+            {connectionError ? (
+              <div className="flex h-full items-center justify-center flex-col gap-4 text-white">
+                <AlertCircle className="size-12 text-red-500" />
+                <div className="text-center px-4">
+                  <p className="text-lg font-semibold mb-2">Connection Error</p>
+                  <p className="text-sm text-gray-300 mb-4">{connectionError}</p>
+                  <Button 
+                    onClick={retryConnection}
+                    className="bg-blue-600 hover:bg-blue-700"
+                  >
+                    Retry Connection
+                  </Button>
+                </div>
+              </div>
+            ) : remoteParticipantIds?.length > 0 ? (
               <Video
                 id={remoteParticipantIds[0]}
                 className="w-full h-full"
                 tileClassName="!object-cover"
               />
             ) : (
-              <div className="flex h-full items-center justify-center">
+              <div className="flex h-full items-center justify-center flex-col gap-4">
                 <l-quantum
                   size="45"
                   speed="1.75"
                   color="white"
                 ></l-quantum>
+                <p className="text-white text-sm">
+                  {isInitializing ? "Initializing interview..." : "Connecting to Sarah Mitchell..."}
+                </p>
               </div>
             )}
           </div>
@@ -240,41 +404,33 @@ export const InterviewChat: React.FC = () => {
           <h3 className="font-semibold mb-3 text-gray-800">Response Guidelines</h3>
           
           <div className="space-y-3 text-sm">
-            <div className="flex items-start gap-2">
-              <div className="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center mt-0.5">
-                <div className="w-2 h-2 rounded-full bg-green-500"></div>
-              </div>
-              <div>
-                <div className="font-medium text-green-700">Strong Response</div>
-                <div className="text-gray-600 text-xs">
-                  I'm most passionate about MERN stack development. In my recent project building an e-commerce platform, I was responsible for designing and implementing the backend API using Node.js and Express.js, integrating with MongoDB for data persistence, and developing the frontend using React. A key challenge was optimizing database queries for performance, which I addressed by implementing caching and query optimization techniques. This resulted in a 30% improvement in response times.
+            {guidelines.map((guideline, index) => (
+              <div key={index} className="flex items-start gap-2">
+                <div className={cn(
+                  "w-5 h-5 rounded-full flex items-center justify-center mt-0.5",
+                  guideline.type === 'strong' ? "bg-green-100" : 
+                  guideline.type === 'acceptable' ? "bg-blue-100" : "bg-red-100"
+                )}>
+                  <div className={cn(
+                    "w-2 h-2 rounded-full",
+                    guideline.type === 'strong' ? "bg-green-500" : 
+                    guideline.type === 'acceptable' ? "bg-blue-500" : "bg-red-500"
+                  )}></div>
+                </div>
+                <div>
+                  <div className={cn(
+                    "font-medium",
+                    guideline.type === 'strong' ? "text-green-700" : 
+                    guideline.type === 'acceptable' ? "text-blue-700" : "text-red-700"
+                  )}>
+                    {guideline.title}
+                  </div>
+                  <div className="text-gray-600 text-xs">
+                    {guideline.content}
+                  </div>
                 </div>
               </div>
-            </div>
-
-            <div className="flex items-start gap-2">
-              <div className="w-5 h-5 rounded-full bg-blue-100 flex items-center justify-center mt-0.5">
-                <div className="w-2 h-2 rounded-full bg-blue-500"></div>
-              </div>
-              <div>
-                <div className="font-medium text-blue-700">Acceptable Response</div>
-                <div className="text-gray-600 text-xs">
-                  I've worked with both backend and frontend technologies. I used Node.js and React in a college project. We built a basic web application, and I learned a lot about how these technologies work together.
-                </div>
-              </div>
-            </div>
-
-            <div className="flex items-start gap-2">
-              <div className="w-5 h-5 rounded-full bg-red-100 flex items-center justify-center mt-0.5">
-                <div className="w-2 h-2 rounded-full bg-red-500"></div>
-              </div>
-              <div>
-                <div className="font-medium text-red-700">Avoid in Response</div>
-                <div className="text-gray-600 text-xs">
-                  I've listed those skills because they are in demand. I haven't actually built any real projects with them yet, but I'm eager to learn.
-                </div>
-              </div>
-            </div>
+            ))}
           </div>
         </div>
 
@@ -321,7 +477,9 @@ export const InterviewChat: React.FC = () => {
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-lg font-semibold text-gray-800">Interview Chat</h2>
-              <span className="text-sm text-purple-600 bg-purple-100 px-2 py-1 rounded-full">Introduction</span>
+              <span className="text-sm text-purple-600 bg-purple-100 px-2 py-1 rounded-full capitalize">
+                {conversationPhase}
+              </span>
             </div>
             <Button variant="ghost" size="icon">
               <Download className="size-4 text-gray-600" />
@@ -335,8 +493,8 @@ export const InterviewChat: React.FC = () => {
             <div className="flex items-center justify-center h-full text-gray-500">
               <div className="text-center">
                 <div className="text-lg mb-2">👋</div>
-                <p>Conversation will appear here</p>
-                <p className="text-sm">Start by introducing yourself</p>
+                <p className="text-gray-700 font-medium">Ready to start your interview?</p>
+                <p className="text-sm text-gray-500">Sarah Mitchell will begin the conversation shortly</p>
               </div>
             </div>
           ) : (
