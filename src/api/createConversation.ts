@@ -24,7 +24,7 @@ export const createConversation = async (
     persona_id: settings.persona || "p2fbd605", // Updated to use Tavus AI avatar
     custom_greeting: settings.greeting !== undefined && settings.greeting !== null 
       ? settings.greeting 
-      : "Hello! I'm David, your AI interviewer. I'll be conducting this technical interview today. Let's begin with some questions about your experience and skills.",
+      : "Hello! I'm Sarah Mitchell, your AI interviewer. I'll be conducting this technical interview today. Let's begin with some questions about your experience and skills.",
     conversational_context: contextString
   };
   

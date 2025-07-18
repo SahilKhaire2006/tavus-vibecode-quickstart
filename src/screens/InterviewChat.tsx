@@ -7,6 +7,7 @@ import {
   useParticipantIds,
   useVideoTrack,
   useAudioTrack,
+  useDailyEvent,
 } from "@daily-co/daily-react";
 import Video from "@/components/Video";
 import { conversationAtom } from "@/store/conversation";
@@ -14,6 +15,7 @@ import { useAtom, useAtomValue } from "jotai";
 import { screenAtom } from "@/store/screens";
 import { Button } from "@/components/ui/button";
 import { endConversation } from "@/api/endConversation";
+import { createConversation } from "@/api/createConversation";
 import {
   MicIcon,
   MicOffIcon,
@@ -45,35 +47,13 @@ interface ChatMessage {
   category?: string;
 }
 
-const mockMessages: ChatMessage[] = [
-  {
-    id: '1',
-    type: 'ai',
-    content: "Hello Aditya Khaire! Nice to meet you I'm David. I've reviewed your background and I'll be asking you questions about your experience and skills. Let's start with a brief introduction. Could you tell me about your professional journey and what motivates you in your career?",
-    timestamp: '9:33:20 PM',
-    category: 'Introduction'
-  },
-  {
-    id: '2',
-    type: 'user',
-    content: "hello my anem is aditya i am from jejuri i have completed my diploma in computer engineering and persuing degree in BTech from VIT.",
-    timestamp: '9:55:02 PM'
-  },
-  {
-    id: '3',
-    type: 'ai',
-    content: "Thanks for that introduction, Aditya. I see you've listed several skills, including backend development, web development, MERN stack, and data analysis. Could you elaborate on your experience with these technologies? Perhaps pick one or two that you're most passionate about and tell me about a project where you utilized them. What were your contributions and what challenges did you overcome?",
-    timestamp: '9:55:22 PM',
-    category: 'Introduction'
-  }
-];
-
 export const InterviewChat: React.FC = () => {
   const [conversation, setConversation] = useAtom(conversationAtom);
   const [, setScreenState] = useAtom(screenAtom);
   const token = useAtomValue(apiTokenAtom);
-  const [messages, setMessages] = useState<ChatMessage[]>(mockMessages);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputMessage, setInputMessage] = useState("");
+  const [isInitializing, setIsInitializing] = useState(true);
 
   const daily = useDaily();
   const localSessionId = useLocalSessionId();
@@ -83,6 +63,41 @@ export const InterviewChat: React.FC = () => {
   const isMicEnabled = !localAudio.isOff;
   const remoteParticipantIds = useParticipantIds({ filter: "remote" });
   const [start, setStart] = useState(false);
+
+  // Initialize conversation on component mount
+  useEffect(() => {
+    const initializeConversation = async () => {
+      if (!conversation && token && isInitializing) {
+        try {
+          const newConversation = await createConversation(token);
+          setConversation(newConversation);
+          setIsInitializing(false);
+        } catch (error) {
+          console.error("Failed to create conversation:", error);
+          setIsInitializing(false);
+        }
+      }
+    };
+
+    initializeConversation();
+  }, [conversation, token, isInitializing, setConversation]);
+
+  // Listen for AI messages
+  useDailyEvent(
+    "app-message",
+    useCallback((ev: any) => {
+      if (ev.data?.event_type === "conversation.speech") {
+        const aiMessage: ChatMessage = {
+          id: Date.now().toString(),
+          type: 'ai',
+          content: ev.data.properties?.text || "",
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+          category: 'Introduction'
+        };
+        setMessages(prev => [...prev, aiMessage]);
+      }
+    }, [])
+  );
 
   useEffect(() => {
     if (remoteParticipantIds.length && !start) {
@@ -139,7 +154,7 @@ export const InterviewChat: React.FC = () => {
     setConversation(null);
     clearSessionTime();
     setScreenState({ currentScreen: "finalScreen" });
-  }, [daily, token]);
+  }, [daily, token, conversation, setConversation, setScreenState]);
 
   const handleSendMessage = () => {
     if (inputMessage.trim()) {
@@ -147,9 +162,23 @@ export const InterviewChat: React.FC = () => {
         id: Date.now().toString(),
         type: 'user',
         content: inputMessage,
-        timestamp: new Date().toLocaleTimeString()
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
       };
       setMessages(prev => [...prev, newMessage]);
+      
+      // Send message to AI via Daily
+      if (daily) {
+        daily.sendAppMessage({
+          message_type: "conversation",
+          event_type: "conversation.echo",
+          conversation_id: conversation?.conversation_id,
+          properties: {
+            modality: "text",
+            text: inputMessage,
+          },
+        });
+      }
+      
       setInputMessage("");
     }
   };
@@ -169,7 +198,7 @@ export const InterviewChat: React.FC = () => {
         <div className="absolute inset-0 grid grid-cols-2 gap-4 p-4">
           {/* User video */}
           <div className="bg-black rounded-lg overflow-hidden relative">
-            <div className="absolute bottom-4 left-4 z-10 bg-black/50 text-white px-3 py-1 rounded-full text-sm flex items-center gap-2">
+            <div className="absolute bottom-4 left-4 z-10 bg-black/70 text-white px-3 py-1 rounded-full text-sm flex items-center gap-2">
               <div className="w-2 h-2 bg-white rounded-full"></div>
               You
             </div>
@@ -183,13 +212,10 @@ export const InterviewChat: React.FC = () => {
           </div>
 
           {/* AI Interviewer video */}
-          <div className="bg-gray-800 rounded-lg overflow-hidden relative">
-            <div className="absolute bottom-4 left-4 z-10 bg-black/50 text-white px-3 py-1 rounded-full text-sm flex items-center gap-2">
+          <div className="bg-gray-900 rounded-lg overflow-hidden relative">
+            <div className="absolute bottom-4 left-4 z-10 bg-black/70 text-white px-3 py-1 rounded-full text-sm flex items-center gap-2">
               <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-              AI Interviewer
-            </div>
-            <div className="absolute top-4 right-4 z-10 bg-black/50 text-white px-2 py-1 rounded text-xs">
-              HeyGen
+              Sarah Mitchell
             </div>
             {remoteParticipantIds?.length > 0 ? (
               <Video
@@ -210,8 +236,8 @@ export const InterviewChat: React.FC = () => {
         </div>
 
         {/* Response Guidelines */}
-        <div className="absolute bottom-4 left-4 bg-white rounded-lg p-4 max-w-md">
-          <h3 className="font-semibold mb-3">Response Guidelines</h3>
+        <div className="absolute bottom-4 left-4 bg-white rounded-lg p-4 max-w-md shadow-lg">
+          <h3 className="font-semibold mb-3 text-gray-800">Response Guidelines</h3>
           
           <div className="space-y-3 text-sm">
             <div className="flex items-start gap-2">
@@ -294,51 +320,61 @@ export const InterviewChat: React.FC = () => {
         <div className="p-4 border-b bg-white">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-lg font-semibold">Interview Chat</h2>
+              <h2 className="text-lg font-semibold text-gray-800">Interview Chat</h2>
               <span className="text-sm text-purple-600 bg-purple-100 px-2 py-1 rounded-full">Introduction</span>
             </div>
             <Button variant="ghost" size="icon">
-              <Download className="size-4" />
+              <Download className="size-4 text-gray-600" />
             </Button>
           </div>
         </div>
 
         {/* Messages */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
-          {messages.map((message) => (
-            <div key={message.id} className="space-y-2">
-              {message.type === 'ai' && (
-                <div className="flex items-start gap-3">
-                  <div className="w-8 h-8 rounded-full bg-purple-600 flex items-center justify-center text-white text-sm font-medium">
-                    AI
-                  </div>
-                  <div className="flex-1">
-                    {message.category && (
-                      <div className="text-xs text-purple-600 font-medium mb-1">{message.category}</div>
-                    )}
-                    <div className="bg-gray-100 rounded-lg p-3 text-sm">
-                      {message.content}
-                    </div>
-                    <div className="text-xs text-gray-500 mt-1">{message.timestamp}</div>
-                  </div>
-                </div>
-              )}
-              
-              {message.type === 'user' && (
-                <div className="flex items-start gap-3 justify-end">
-                  <div className="flex-1 text-right">
-                    <div className="bg-blue-600 text-white rounded-lg p-3 text-sm inline-block max-w-xs">
-                      {message.content}
-                    </div>
-                    <div className="text-xs text-gray-500 mt-1">{message.timestamp}</div>
-                  </div>
-                  <div className="w-8 h-8 rounded-full bg-gray-600 flex items-center justify-center text-white text-sm">
-                    <div className="w-2 h-2 bg-white rounded-full"></div>
-                  </div>
-                </div>
-              )}
+          {messages.length === 0 ? (
+            <div className="flex items-center justify-center h-full text-gray-500">
+              <div className="text-center">
+                <div className="text-lg mb-2">👋</div>
+                <p>Conversation will appear here</p>
+                <p className="text-sm">Start by introducing yourself</p>
+              </div>
             </div>
-          ))}
+          ) : (
+            messages.map((message) => (
+              <div key={message.id} className="space-y-2">
+                {message.type === 'ai' && (
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-full bg-purple-600 flex items-center justify-center text-white text-sm font-medium">
+                      SM
+                    </div>
+                    <div className="flex-1">
+                      {message.category && (
+                        <div className="text-xs text-purple-600 font-medium mb-1">{message.category}</div>
+                      )}
+                      <div className="bg-gray-100 rounded-lg p-3 text-sm text-gray-800">
+                        {message.content}
+                      </div>
+                      <div className="text-xs text-gray-500 mt-1">{message.timestamp}</div>
+                    </div>
+                  </div>
+                )}
+                
+                {message.type === 'user' && (
+                  <div className="flex items-start gap-3 justify-end">
+                    <div className="flex-1 text-right">
+                      <div className="bg-blue-600 text-white rounded-lg p-3 text-sm inline-block max-w-xs">
+                        {message.content}
+                      </div>
+                      <div className="text-xs text-gray-500 mt-1">{message.timestamp}</div>
+                    </div>
+                    <div className="w-8 h-8 rounded-full bg-gray-600 flex items-center justify-center text-white text-sm">
+                      <div className="w-2 h-2 bg-white rounded-full"></div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))
+          )}
         </div>
 
         {/* Input */}
@@ -350,7 +386,7 @@ export const InterviewChat: React.FC = () => {
               onChange={(e) => setInputMessage(e.target.value)}
               onKeyPress={handleKeyPress}
               placeholder="Type or speak your response..."
-              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm text-gray-800 bg-white placeholder-gray-500"
             />
             <Button
               size="icon"
