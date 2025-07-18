@@ -43,7 +43,7 @@ function App() {
   };
 
   return (
-    <main className={currentScreen === "interviewChat" ? "h-screen" : "flex h-svh flex-col items-center justify-between gap-3 p-5 sm:gap-4 lg:p-8 bg-black"}>
+    <main className={currentScreen === "interviewChat" ? "h-screen bg-gray-50" : "flex h-svh flex-col items-center justify-between gap-3 p-5 sm:gap-4 lg:p-8 bg-black"}>
       {currentScreen !== "introLoading" && currentScreen !== "interviewChat" && <Header />}
       {renderScreen()}
       {currentScreen !== "introLoading" && currentScreen !== "interviewChat" && <Footer />}

@@ -160,7 +160,7 @@ export const InterviewChat: React.FC = () => {
   // Initialize conversation with better error handling
   useEffect(() => {
     const initializeConversation = async () => {
-      if (!conversation && token && isInitializing) {
+      if (!conversation && token) {
         try {
           console.log("Initializing conversation with token:", token?.substring(0, 8) + "...");
           
@@ -183,8 +183,10 @@ export const InterviewChat: React.FC = () => {
       }
     };
 
-    initializeConversation();
-  }, [conversation, token, isInitializing, setConversation]);
+    if (token && !conversation) {
+      initializeConversation();
+    }
+  }, [conversation, token, setConversation]);
 
   // Listen for AI messages and update guidelines dynamically
   useDailyEvent(
