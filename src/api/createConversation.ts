@@ -63,18 +63,3 @@ export const createConversation = async (
     throw error;
   }
 };
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": token ?? "",
-    },
-    body: JSON.stringify(payload),
-  });
-
-  if (!response?.ok) {
-    throw new Error(`HTTP error! status: ${response.status}`);
-  }
-
-  const data = await response.json();
-  return data;
-};
