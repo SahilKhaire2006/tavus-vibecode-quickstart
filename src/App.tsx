@@ -8,6 +8,7 @@ import {
   OutOfMinutes,
   Intro,
   Instructions,
+  InterviewChat,
   Conversation,
   FinalScreen,
   Settings,
@@ -30,6 +31,8 @@ function App() {
         return <Settings />;
       case "instructions":
         return <Instructions />;
+      case "interviewChat":
+        return <InterviewChat />;
       case "conversation":
         return <Conversation />;
       case "finalScreen":
@@ -40,10 +43,10 @@ function App() {
   };
 
   return (
-    <main className="flex h-svh flex-col items-center justify-between gap-3 p-5 sm:gap-4 lg:p-8 bg-black">
-      {currentScreen !== "introLoading" && <Header />}
+    <main className={currentScreen === "interviewChat" ? "h-screen" : "flex h-svh flex-col items-center justify-between gap-3 p-5 sm:gap-4 lg:p-8 bg-black"}>
+      {currentScreen !== "introLoading" && currentScreen !== "interviewChat" && <Header />}
       {renderScreen()}
-      {currentScreen !== "introLoading" && <Footer />}
+      {currentScreen !== "introLoading" && currentScreen !== "interviewChat" && <Footer />}
     </main>
   );
 }

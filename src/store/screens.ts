@@ -7,6 +7,7 @@ export type Screen =
   | "intro"
   | "instructions"
   | "settings"
+  | "interviewChat"
   | "conversation"
   | "conversationError"
   | "positiveFeedback"
@@ -19,7 +20,7 @@ interface ScreenState {
 }
 
 const initialScreenState: ScreenState = {
-  currentScreen: "introLoading",
+  currentScreen: "interviewChat",
 };
 
 export const screenAtom = atom<ScreenState>(initialScreenState);
