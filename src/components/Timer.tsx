@@ -26,8 +26,8 @@ export const Timer = () => {
   }, []);
 
   return (
-    <div className="absolute left-4 top-4 rounded-full bg-white/10 px-4 py-3 text-sm font-medium text-secondary-foreground backdrop-blur-xs">
-      Time Remaining: {formatTime(time)}
+    <div className="bg-gray-100 rounded-lg px-3 py-2 text-sm font-medium text-gray-700">
+      {formatTime(time)}
     </div>
   );
 };

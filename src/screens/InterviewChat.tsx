@@ -58,31 +58,11 @@ export const InterviewChat: React.FC = () => {
   const [conversation, setConversation] = useAtom(conversationAtom);
   const [, setScreenState] = useAtom(screenAtom);
   const token = useAtomValue(apiTokenAtom);
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [inputMessage, setInputMessage] = useState("");
   const [isInitializing, setIsInitializing] = useState(true);
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const [errorType, setErrorType] = useState<string | null>(null);
-  const [conversationPhase, setConversationPhase] = useState<'intro' | 'technical' | 'experience' | 'closing'>('intro');
-  
-  // Dynamic guidelines based on conversation phase
-  const [guidelines, setGuidelines] = useState<GuidelineExample[]>([
-    {
-      type: 'strong',
-      title: 'Ready to Begin',
-      content: 'Welcome! Your interview with Sarah Mitchell is about to start. She will introduce herself and begin with some general questions about your background.'
-    },
-    {
-      type: 'acceptable',
-      title: 'Interview Process',
-      content: 'This interview will cover your experience, technical skills, and career goals. Feel free to provide detailed examples and ask questions.'
-    },
-    {
-      type: 'avoid',
-      title: 'Getting Connected',
-      content: 'Please ensure your camera and microphone are enabled. The AI interviewer will join shortly to begin the conversation.'
-    }
-  ]);
+  const [interviewerName] = useState("Sarah Mitchell");
+  const [interviewerTitle] = useState("Senior Technical Interviewer");
 
   const daily = useDaily();
   const localSessionId = useLocalSessionId();
@@ -92,71 +72,6 @@ export const InterviewChat: React.FC = () => {
   const isMicEnabled = !localAudio.isOff;
   const remoteParticipantIds = useParticipantIds({ filter: "remote" });
   const [start, setStart] = useState(false);
-
-  // Update guidelines based on conversation context
-  const updateGuidelinesBasedOnPhase = (phase: string, lastMessage?: string) => {
-    switch (phase) {
-      case 'intro':
-        setGuidelines([
-          {
-            type: 'strong',
-            title: 'Strong Introduction',
-            content: 'Hi Sarah! I\'m excited about this opportunity. I have 3 years of experience in full-stack development, specializing in React and Node.js. I\'ve led several successful projects including an e-commerce platform that increased sales by 40%.'
-          },
-          {
-            type: 'acceptable',
-            title: 'Good Introduction',
-            content: 'Hello! I\'m a software developer with experience in web development. I\'ve worked on various projects using modern technologies.'
-          },
-          {
-            type: 'avoid',
-            title: 'Avoid Generic Responses',
-            content: 'Hi. I\'m looking for a job and I think I can do this role. I don\'t have much experience but I\'m willing to learn.'
-          }
-        ]);
-        break;
-      case 'technical':
-        setGuidelines([
-          {
-            type: 'strong',
-            title: 'Technical Excellence',
-            content: 'I implemented a microservices architecture using Docker and Kubernetes, which improved system scalability by 60%. I used Redis for caching and implemented CI/CD pipelines with Jenkins.'
-          },
-          {
-            type: 'acceptable',
-            title: 'Technical Competence',
-            content: 'I\'ve worked with React, Node.js, and MongoDB. I understand the basics of system design and have experience with APIs.'
-          },
-          {
-            type: 'avoid',
-            title: 'Avoid Vague Answers',
-            content: 'I know some programming languages. I\'ve used frameworks before but can\'t remember the details.'
-          }
-        ]);
-        break;
-      case 'experience':
-        setGuidelines([
-          {
-            type: 'strong',
-            title: 'Detailed Experience',
-            content: 'In my previous role at TechCorp, I led a team of 4 developers to rebuild their legacy system. We reduced load times by 70% and improved user satisfaction scores from 3.2 to 4.8.'
-          },
-          {
-            type: 'acceptable',
-            title: 'Relevant Experience',
-            content: 'I worked on several projects where I collaborated with cross-functional teams and delivered features on time.'
-          },
-          {
-            type: 'avoid',
-            title: 'Avoid Minimal Details',
-            content: 'I did some projects. They went okay. I worked with other people sometimes.'
-          }
-        ]);
-        break;
-      default:
-        break;
-    }
-  };
 
   // Initialize conversation with better error handling
   useEffect(() => {
@@ -195,43 +110,6 @@ export const InterviewChat: React.FC = () => {
       initializeConversation();
     }
   }, [conversation, token, setConversation]);
-
-  // Listen for AI messages and update guidelines dynamically
-  useDailyEvent(
-    "app-message",
-    useCallback((ev: any) => {
-      console.log("Received app message:", ev.data);
-      
-      if (ev.data?.event_type === "conversation.speech") {
-        const aiMessage: ChatMessage = {
-          id: Date.now().toString(),
-          type: 'ai',
-          content: ev.data.properties?.text || "",
-          timestamp: new Date().toLocaleTimeString([], { 
-            hour: '2-digit', 
-            minute: '2-digit', 
-            second: '2-digit' 
-          }),
-          category: 'Interview'
-        };
-        
-        setMessages(prev => [...prev, aiMessage]);
-        
-        // Determine conversation phase and update guidelines
-        const messageContent = aiMessage.content.toLowerCase();
-        if (messageContent.includes('technical') || messageContent.includes('programming') || messageContent.includes('code')) {
-          setConversationPhase('technical');
-          updateGuidelinesBasedOnPhase('technical', aiMessage.content);
-        } else if (messageContent.includes('experience') || messageContent.includes('project') || messageContent.includes('work')) {
-          setConversationPhase('experience');
-          updateGuidelinesBasedOnPhase('experience', aiMessage.content);
-        } else if (messages.length === 0) {
-          setConversationPhase('intro');
-          updateGuidelinesBasedOnPhase('intro', aiMessage.content);
-        }
-      }
-    }, [messages.length])
-  );
 
   // Handle participant joining
   useEffect(() => {
@@ -303,44 +181,6 @@ export const InterviewChat: React.FC = () => {
     setScreenState({ currentScreen: "finalScreen" });
   }, [daily, token, conversation, setConversation, setScreenState]);
 
-  const handleSendMessage = () => {
-    if (inputMessage.trim()) {
-      const newMessage: ChatMessage = {
-        id: Date.now().toString(),
-        type: 'user',
-        content: inputMessage,
-        timestamp: new Date().toLocaleTimeString([], { 
-          hour: '2-digit', 
-          minute: '2-digit', 
-          second: '2-digit' 
-        })
-      };
-      setMessages(prev => [...prev, newMessage]);
-      
-      // Send message to AI via Daily
-      if (daily && conversation?.conversation_id) {
-        daily.sendAppMessage({
-          message_type: "conversation",
-          event_type: "conversation.echo",
-          conversation_id: conversation.conversation_id,
-          properties: {
-            modality: "text",
-            text: inputMessage,
-          },
-        });
-      }
-      
-      setInputMessage("");
-    }
-  };
-
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSendMessage();
-    }
-  };
-
   const retryConnection = () => {
     setConnectionError(null);
     setErrorType(null);
@@ -353,49 +193,52 @@ export const InterviewChat: React.FC = () => {
   };
 
   return (
-    <div className="flex h-screen bg-gray-50">
-      {/* Left side - Video section */}
-      <div className="flex-1 bg-black relative">
-        {/* Video containers */}
-        <div className="absolute inset-0 grid grid-cols-2 gap-4 p-4">
-          {/* User video */}
-          <div className="bg-black rounded-lg overflow-hidden relative">
-            <div className="absolute bottom-4 left-4 z-10 bg-black/70 text-white px-3 py-1 rounded-full text-sm flex items-center gap-2">
-              <div className="w-2 h-2 bg-white rounded-full"></div>
-              You
+    <div className="h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex flex-col">
+      {/* Professional Header */}
+      <div className="bg-white shadow-sm border-b border-gray-200 px-6 py-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
+              <VideoIcon className="size-6 text-white" />
             </div>
-            {localSessionId && (
-              <Video
-                id={localSessionId}
-                className="w-full h-full"
-                tileClassName="!object-cover"
-              />
-            )}
+            <div>
+              <h1 className="text-xl font-semibold text-gray-900">Technical Interview</h1>
+              <p className="text-sm text-gray-600">Professional Video Interview Session</p>
+            </div>
           </div>
-
-          {/* AI Interviewer video */}
-          <div className="bg-gray-900 rounded-lg overflow-hidden relative">
-            <div className="absolute bottom-4 left-4 z-10 bg-black/70 text-white px-3 py-1 rounded-full text-sm flex items-center gap-2">
-              <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-              Sarah Mitchell
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 bg-green-50 px-3 py-1 rounded-full">
+              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+              <span className="text-sm font-medium text-green-700">Live</span>
             </div>
+            <Timer />
+          </div>
+        </div>
+      </div>
+
+      {/* Main Video Area */}
+      <div className="flex-1 p-6">
+        <div className="h-full bg-white rounded-xl shadow-lg overflow-hidden border border-gray-200">
+          <div className="h-full relative">
             {connectionError ? (
-              <div className="flex h-full items-center justify-center flex-col gap-4 text-white">
-                <AlertCircle className="size-12 text-red-500" />
-                <div className="text-center px-4">
-                  <p className="text-lg font-semibold mb-2">Connection Error</p>
-                  <p className="text-sm text-gray-300 mb-4">{connectionError}</p>
+              <div className="flex h-full items-center justify-center flex-col gap-6 bg-gray-50">
+                <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center">
+                  <AlertCircle className="size-8 text-red-600" />
+                </div>
+                <div className="text-center max-w-md">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Connection Issue</h3>
+                  <p className="text-gray-600 mb-6">{connectionError}</p>
                   {errorType === "credits_exhausted" ? (
                     <Button 
                       onClick={goToSettings}
-                      className="bg-purple-600 hover:bg-purple-700"
+                      className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg"
                     >
-                      Go to Settings
+                      Manage Account
                     </Button>
                   ) : (
                     <Button 
                       onClick={retryConnection}
-                      className="bg-blue-600 hover:bg-blue-700"
+                      className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg"
                     >
                       Retry Connection
                     </Button>
@@ -403,189 +246,120 @@ export const InterviewChat: React.FC = () => {
                 </div>
               </div>
             ) : remoteParticipantIds?.length > 0 ? (
-              <Video
-                id={remoteParticipantIds[0]}
-                className="w-full h-full"
-                tileClassName="!object-cover"
-              />
+              <>
+                {/* Main interviewer video */}
+                <Video
+                  id={remoteParticipantIds[0]}
+                  className="w-full h-full"
+                  tileClassName="!object-cover"
+                />
+                
+                {/* Interviewer info overlay */}
+                <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-sm rounded-lg px-4 py-2 shadow-sm">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
+                      <span className="text-white text-sm font-medium">SM</span>
+                    </div>
+                    <div>
+                      <p className="font-medium text-gray-900 text-sm">{interviewerName}</p>
+                      <p className="text-xs text-gray-600">{interviewerTitle}</p>
+                    </div>
+                  </div>
+                </div>
+              </>
             ) : (
-              <div className="flex h-full items-center justify-center flex-col gap-4">
-                <l-quantum
-                  size="45"
-                  speed="1.75"
-                  color="white"
-                ></l-quantum>
-                <p className="text-white text-sm">
-                  {isInitializing ? "Initializing interview..." : "Connecting to Sarah Mitchell..."}
-                </p>
+              <div className="flex h-full items-center justify-center flex-col gap-6 bg-gray-50">
+                <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center">
+                  <l-quantum
+                    size="32"
+                    speed="1.75"
+                    color="#2563eb"
+                  ></l-quantum>
+                </div>
+                <div className="text-center">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                    {isInitializing ? "Preparing Interview" : "Connecting to Interviewer"}
+                  </h3>
+                  <p className="text-gray-600">
+                    {isInitializing ? "Setting up your interview session..." : `Connecting to ${interviewerName}...`}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* User video (picture-in-picture) */}
+            {localSessionId && (
+              <div className="absolute bottom-4 right-4 w-48 h-36 bg-gray-900 rounded-lg overflow-hidden shadow-lg border-2 border-white">
+                <Video
+                  id={localSessionId}
+                  className="w-full h-full"
+                  tileClassName="!object-cover"
+                />
+                <div className="absolute bottom-2 left-2 bg-black/70 text-white px-2 py-1 rounded text-xs">
+                  You
+                </div>
               </div>
             )}
           </div>
         </div>
+      </div>
 
-        {/* Response Guidelines */}
-        <div className="absolute bottom-4 left-4 bg-white rounded-lg p-4 max-w-md shadow-lg">
-          <h3 className="font-semibold mb-3 text-gray-800">Response Guidelines</h3>
-          
-          <div className="space-y-3 text-sm">
-            {guidelines.map((guideline, index) => (
-              <div key={index} className="flex items-start gap-2">
-                <div className={cn(
-                  "w-5 h-5 rounded-full flex items-center justify-center mt-0.5",
-                  guideline.type === 'strong' ? "bg-green-100" : 
-                  guideline.type === 'acceptable' ? "bg-blue-100" : "bg-red-100"
-                )}>
-                  <div className={cn(
-                    "w-2 h-2 rounded-full",
-                    guideline.type === 'strong' ? "bg-green-500" : 
-                    guideline.type === 'acceptable' ? "bg-blue-500" : "bg-red-500"
-                  )}></div>
-                </div>
-                <div>
-                  <div className={cn(
-                    "font-medium",
-                    guideline.type === 'strong' ? "text-green-700" : 
-                    guideline.type === 'acceptable' ? "text-blue-700" : "text-red-700"
-                  )}>
-                    {guideline.title}
-                  </div>
-                  <div className="text-gray-600 text-xs">
-                    {guideline.content}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Control buttons */}
-        <div className="absolute bottom-4 right-4 flex gap-2">
+      {/* Control Panel */}
+      <div className="bg-white border-t border-gray-200 px-6 py-4">
+        <div className="flex items-center justify-center gap-4">
           <Button
-            size="icon"
-            className="w-12 h-12 rounded-full bg-gray-800 hover:bg-gray-700 border-0"
             onClick={toggleAudio}
+            className={cn(
+              "w-12 h-12 rounded-full border-2 transition-all duration-200",
+              !isMicEnabled 
+                ? "bg-red-500 hover:bg-red-600 border-red-500 text-white" 
+                : "bg-gray-100 hover:bg-gray-200 border-gray-300 text-gray-700"
+            )}
           >
             {!isMicEnabled ? (
-              <MicOffIcon className="size-5 text-white" />
+              <MicOffIcon className="size-5" />
             ) : (
-              <MicIcon className="size-5 text-white" />
+              <MicIcon className="size-5" />
             )}
           </Button>
+          
           <Button
-            size="icon"
-            className="w-12 h-12 rounded-full bg-gray-800 hover:bg-gray-700 border-0"
             onClick={toggleVideo}
+            className={cn(
+              "w-12 h-12 rounded-full border-2 transition-all duration-200",
+              !isCameraEnabled 
+                ? "bg-red-500 hover:bg-red-600 border-red-500 text-white" 
+                : "bg-gray-100 hover:bg-gray-200 border-gray-300 text-gray-700"
+            )}
           >
             {!isCameraEnabled ? (
-              <VideoOffIcon className="size-5 text-white" />
+              <VideoOffIcon className="size-5" />
             ) : (
-              <VideoIcon className="size-5 text-white" />
+              <VideoIcon className="size-5" />
             )}
           </Button>
+          
           <Button
-            size="icon"
-            className="w-12 h-12 rounded-full bg-red-600 hover:bg-red-700 border-0"
             onClick={leaveConversation}
+            className="w-12 h-12 rounded-full bg-red-500 hover:bg-red-600 border-2 border-red-500 text-white transition-all duration-200"
           >
-            <PhoneIcon className="size-5 text-white rotate-[135deg]" />
+            <PhoneIcon className="size-5 rotate-[135deg]" />
           </Button>
         </div>
-
-        <DailyAudio />
-      </div>
-
-      {/* Right side - Chat section */}
-      <div className="w-96 bg-white border-l flex flex-col">
-        {/* Header */}
-        <div className="p-4 border-b bg-white">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-lg font-semibold text-gray-800">Interview Chat</h2>
-              <span className="text-sm text-purple-600 bg-purple-100 px-2 py-1 rounded-full capitalize">
-                {conversationPhase}
-              </span>
-            </div>
-            <Button variant="ghost" size="icon">
-              <Download className="size-4 text-gray-600" />
-            </Button>
+        
+        <div className="flex items-center justify-center mt-3 gap-6 text-sm text-gray-600">
+          <div className="flex items-center gap-2">
+            <div className={cn("w-2 h-2 rounded-full", isMicEnabled ? "bg-green-500" : "bg-red-500")}></div>
+            <span>{isMicEnabled ? "Microphone On" : "Microphone Off"}</span>
           </div>
-        </div>
-
-        {/* Messages */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
-          {messages.length === 0 ? (
-            <div className="flex items-center justify-center h-full text-gray-500">
-              <div className="text-center">
-                <div className="text-lg mb-2">👋</div>
-                <p className="text-gray-700 font-medium">Ready to start your interview?</p>
-                <p className="text-sm text-gray-500">Sarah Mitchell will begin the conversation shortly</p>
-              </div>
-            </div>
-          ) : (
-            messages.map((message) => (
-              <div key={message.id} className="space-y-2">
-                {message.type === 'ai' && (
-                  <div className="flex items-start gap-3">
-                    <div className="w-8 h-8 rounded-full bg-purple-600 flex items-center justify-center text-white text-sm font-medium">
-                      SM
-                    </div>
-                    <div className="flex-1">
-                      {message.category && (
-                        <div className="text-xs text-purple-600 font-medium mb-1">{message.category}</div>
-                      )}
-                      <div className="bg-gray-100 rounded-lg p-3 text-sm text-gray-800">
-                        {message.content}
-                      </div>
-                      <div className="text-xs text-gray-500 mt-1">{message.timestamp}</div>
-                    </div>
-                  </div>
-                )}
-                
-                {message.type === 'user' && (
-                  <div className="flex items-start gap-3 justify-end">
-                    <div className="flex-1 text-right">
-                      <div className="bg-blue-600 text-white rounded-lg p-3 text-sm inline-block max-w-xs">
-                        {message.content}
-                      </div>
-                      <div className="text-xs text-gray-500 mt-1">{message.timestamp}</div>
-                    </div>
-                    <div className="w-8 h-8 rounded-full bg-gray-600 flex items-center justify-center text-white text-sm">
-                      <div className="w-2 h-2 bg-white rounded-full"></div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            ))
-          )}
-        </div>
-
-        {/* Input */}
-        <div className="p-4 border-t">
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={inputMessage}
-              onChange={(e) => setInputMessage(e.target.value)}
-              onKeyPress={handleKeyPress}
-              placeholder="Type or speak your response..."
-              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm text-gray-800 bg-white placeholder-gray-500"
-            />
-            <Button
-              size="icon"
-              className="w-10 h-10 bg-green-600 hover:bg-green-700 rounded-lg"
-            >
-              <MicIcon className="size-4 text-white" />
-            </Button>
-            <Button
-              size="icon"
-              onClick={handleSendMessage}
-              className="w-10 h-10 bg-blue-600 hover:bg-blue-700 rounded-lg"
-            >
-              <Send className="size-4 text-white" />
-            </Button>
+          <div className="flex items-center gap-2">
+            <div className={cn("w-2 h-2 rounded-full", isCameraEnabled ? "bg-green-500" : "bg-red-500")}></div>
+            <span>{isCameraEnabled ? "Camera On" : "Camera Off"}</span>
           </div>
         </div>
       </div>
+
+      <DailyAudio />
     </div>
   );
 };
