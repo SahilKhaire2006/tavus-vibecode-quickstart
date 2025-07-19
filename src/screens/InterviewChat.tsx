@@ -62,6 +62,7 @@ export const InterviewChat: React.FC = () => {
   const [inputMessage, setInputMessage] = useState("");
   const [isInitializing, setIsInitializing] = useState(true);
   const [connectionError, setConnectionError] = useState<string | null>(null);
+  const [errorType, setErrorType] = useState<string | null>(null);
   const [conversationPhase, setConversationPhase] = useState<'intro' | 'technical' | 'experience' | 'closing'>('intro');
   
   // Dynamic guidelines based on conversation phase
@@ -178,9 +179,11 @@ export const InterviewChat: React.FC = () => {
           
           if (error.message === "CREDITS_EXHAUSTED") {
             setConnectionError("Your account is out of conversational credits. Please top up your Tavus account at https://platform.tavus.io/ to continue.");
+            setErrorType("credits_exhausted");
           } else {
             const errorMessage = error.message || "Unknown error occurred";
             setConnectionError(`Connection failed: ${errorMessage}`);
+            setErrorType("connection_error");
           }
         } finally {
           setIsInitializing(false);
@@ -340,8 +343,13 @@ export const InterviewChat: React.FC = () => {
 
   const retryConnection = () => {
     setConnectionError(null);
+    setErrorType(null);
     setIsInitializing(true);
     setConversation(null);
+  };
+
+  const goToSettings = () => {
+    setScreenState({ currentScreen: "settings" });
   };
 
   return (
@@ -377,12 +385,21 @@ export const InterviewChat: React.FC = () => {
                 <div className="text-center px-4">
                   <p className="text-lg font-semibold mb-2">Connection Error</p>
                   <p className="text-sm text-gray-300 mb-4">{connectionError}</p>
-                  <Button 
-                    onClick={retryConnection}
-                    className="bg-blue-600 hover:bg-blue-700"
-                  >
-                    Retry Connection
-                  </Button>
+                  {errorType === "credits_exhausted" ? (
+                    <Button 
+                      onClick={goToSettings}
+                      className="bg-purple-600 hover:bg-purple-700"
+                    >
+                      Go to Settings
+                    </Button>
+                  ) : (
+                    <Button 
+                      onClick={retryConnection}
+                      className="bg-blue-600 hover:bg-blue-700"
+                    >
+                      Retry Connection
+                    </Button>
+                  )}
                 </div>
               </div>
             ) : remoteParticipantIds?.length > 0 ? (
