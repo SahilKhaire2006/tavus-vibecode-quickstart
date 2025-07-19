@@ -175,8 +175,13 @@ export const InterviewChat: React.FC = () => {
           setConnectionError(null);
         } catch (error: any) {
           console.error("Failed to create conversation:", error);
-          const errorMessage = error.message || "Unknown error occurred";
-          setConnectionError(`Connection failed: ${errorMessage}`);
+          
+          if (error.message === "CREDITS_EXHAUSTED") {
+            setConnectionError("Your account is out of conversational credits. Please top up your Tavus account at https://platform.tavus.io/ to continue.");
+          } else {
+            const errorMessage = error.message || "Unknown error occurred";
+            setConnectionError(`Connection failed: ${errorMessage}`);
+          }
         } finally {
           setIsInitializing(false);
         }

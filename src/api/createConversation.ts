@@ -52,6 +52,12 @@ export const createConversation = async (
     if (!response?.ok) {
       const errorText = await response.text();
       console.error("API Error response:", errorText);
+      
+      // Handle specific error cases
+      if (response.status === 402) {
+        throw new Error("CREDITS_EXHAUSTED");
+      }
+      
       throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
     }
 
