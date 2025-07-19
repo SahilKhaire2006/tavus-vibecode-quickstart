@@ -42,7 +42,7 @@ export const Intro: React.FC = () => {
               type="password"
               value={token || ""}
               onChange={(e) => {
-                const newToken = e.target.value;
+                const newToken = e.target.value.trim();
                 setToken(newToken);
                 localStorage.setItem('tavus-token', newToken);
               }}
