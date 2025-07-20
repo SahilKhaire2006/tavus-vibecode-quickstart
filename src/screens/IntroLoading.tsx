@@ -44,7 +44,7 @@ export const IntroLoading: React.FC = () => {
   useEffect(() => {
     if (screenState !== null) {
       const timer = setTimeout(() => {
-        setScreenState({ currentScreen: screens[screenState] });
+        setScreenState({ currentScreen: "interviewChat" });
       }, 1000);
 
       return () => clearTimeout(timer);

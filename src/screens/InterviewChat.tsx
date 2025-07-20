@@ -1,5 +1,4 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { DialogWrapper } from "@/components/DialogWrapper";
 import {
   DailyAudio,
   useDaily,
@@ -11,9 +10,10 @@ import {
 } from "@daily-co/daily-react";
 import Video from "@/components/Video";
 import { conversationAtom } from "@/store/conversation";
-import { useAtom, useAtomValue } from "jotai";
+import { useAtom } from "jotai";
 import { screenAtom } from "@/store/screens";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { endConversation } from "@/api/endConversation";
 import { createConversation } from "@/api/createConversation";
 import {
@@ -32,37 +32,41 @@ import {
   setSessionStartTime,
   updateSessionEndTime,
 } from "@/utils";
-import { Timer } from "@/components/Timer";
 import { TIME_LIMIT } from "@/config";
-import { apiTokenAtom } from "@/store/tokens";
 import { quantum } from 'ldrs';
 import { cn } from "@/lib/utils";
 
 quantum.register();
 
-interface ChatMessage {
-  id: string;
-  type: 'ai' | 'user';
-  content: string;
-  timestamp: string;
-  category?: string;
-}
-
-interface GuidelineExample {
-  type: 'strong' | 'acceptable' | 'avoid';
-  title: string;
-  content: string;
+interface UserInfo {
+  name: string;
+  projectTitle: string;
+  projectSummary: string;
+  skills: string;
+  certificates: string;
+  education: string;
+  experience: string;
 }
 
 export const InterviewChat: React.FC = () => {
   const [conversation, setConversation] = useAtom(conversationAtom);
   const [, setScreenState] = useAtom(screenAtom);
-  const token = useAtomValue(apiTokenAtom);
+  const [showForm, setShowForm] = useState(true);
+  const [userInfo, setUserInfo] = useState<UserInfo>({
+    name: "",
+    projectTitle: "",
+    projectSummary: "",
+    skills: "",
+    certificates: "",
+    education: "",
+    experience: ""
+  });
   const [isInitializing, setIsInitializing] = useState(true);
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const [errorType, setErrorType] = useState<string | null>(null);
   const [interviewerName] = useState("Sarah Mitchell");
   const [interviewerTitle] = useState("Senior Technical Interviewer");
+  const [currentTime, setCurrentTime] = useState(new Date());
 
   const daily = useDaily();
   const localSessionId = useLocalSessionId();
@@ -73,19 +77,28 @@ export const InterviewChat: React.FC = () => {
   const remoteParticipantIds = useParticipantIds({ filter: "remote" });
   const [start, setStart] = useState(false);
 
+  // Update current time every second
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const handleFormSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setShowForm(false);
+    setIsInitializing(true);
+  };
+
   // Initialize conversation with better error handling
   useEffect(() => {
     const initializeConversation = async () => {
-      if (!conversation && token) {
+      if (!conversation && !showForm) {
         try {
-          console.log("Initializing conversation with token:", token?.substring(0, 8) + "...");
-          
-          // Validate token format
-          if (!token || token.length < 20) {
-            throw new Error("Invalid API token format");
-          }
+          console.log("Initializing conversation with user info:", userInfo);
 
-          const newConversation = await createConversation(token);
+          const newConversation = await createConversation(userInfo);
           console.log("Conversation created successfully:", newConversation.conversation_id);
           setConversation(newConversation);
           setConnectionError(null);
@@ -106,10 +119,10 @@ export const InterviewChat: React.FC = () => {
       }
     };
 
-    if (token && !conversation) {
+    if (!showForm && !conversation) {
       initializeConversation();
     }
-  }, [conversation, token, setConversation]);
+  }, [conversation, showForm, userInfo, setConversation]);
 
   // Handle participant joining
   useEffect(() => {
@@ -173,13 +186,13 @@ export const InterviewChat: React.FC = () => {
   const leaveConversation = useCallback(() => {
     daily?.leave();
     daily?.destroy();
-    if (conversation?.conversation_id && token) {
-      endConversation(token, conversation.conversation_id);
+    if (conversation?.conversation_id) {
+      endConversation("90679945b9fa40b4943fb8c3b64ca59e", conversation.conversation_id);
     }
     setConversation(null);
     clearSessionTime();
     setScreenState({ currentScreen: "finalScreen" });
-  }, [daily, token, conversation, setConversation, setScreenState]);
+  }, [daily, conversation, setConversation, setScreenState]);
 
   const retryConnection = () => {
     setConnectionError(null);
@@ -188,9 +201,107 @@ export const InterviewChat: React.FC = () => {
     setConversation(null);
   };
 
-  const goToSettings = () => {
-    setScreenState({ currentScreen: "settings" });
-  };
+  if (showForm) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-6">
+        <div className="bg-white rounded-xl shadow-lg p-8 w-full max-w-2xl">
+          <div className="text-center mb-8">
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Interview Information</h1>
+            <p className="text-gray-600">Please fill in your details before starting the interview</p>
+          </div>
+          
+          <form onSubmit={handleFormSubmit} className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
+                <Input
+                  required
+                  value={userInfo.name}
+                  onChange={(e) => setUserInfo({...userInfo, name: e.target.value})}
+                  placeholder="Enter your full name"
+                  className="w-full"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Project Title</label>
+                <Input
+                  required
+                  value={userInfo.projectTitle}
+                  onChange={(e) => setUserInfo({...userInfo, projectTitle: e.target.value})}
+                  placeholder="Your main project title"
+                  className="w-full"
+                />
+              </div>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Project Summary</label>
+              <textarea
+                required
+                value={userInfo.projectSummary}
+                onChange={(e) => setUserInfo({...userInfo, projectSummary: e.target.value})}
+                placeholder="Brief description of your project"
+                className="w-full h-24 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Skills (comma separated)</label>
+                <Input
+                  required
+                  value={userInfo.skills}
+                  onChange={(e) => setUserInfo({...userInfo, skills: e.target.value})}
+                  placeholder="React.js, Node.js, MongoDB"
+                  className="w-full"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Certificates</label>
+                <Input
+                  value={userInfo.certificates}
+                  onChange={(e) => setUserInfo({...userInfo, certificates: e.target.value})}
+                  placeholder="Your certifications"
+                  className="w-full"
+                />
+              </div>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Education</label>
+              <Input
+                required
+                value={userInfo.education}
+                onChange={(e) => setUserInfo({...userInfo, education: e.target.value})}
+                placeholder="Your educational background"
+                className="w-full"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Experience</label>
+              <textarea
+                required
+                value={userInfo.experience}
+                onChange={(e) => setUserInfo({...userInfo, experience: e.target.value})}
+                placeholder="Your work experience"
+                className="w-full h-24 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            
+            <Button
+              type="submit"
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg text-lg font-medium"
+            >
+              Start Interview
+            </Button>
+          </form>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex flex-col">
@@ -203,7 +314,9 @@ export const InterviewChat: React.FC = () => {
             </div>
             <div>
               <h1 className="text-xl font-semibold text-gray-900">Technical Interview</h1>
-              <p className="text-sm text-gray-600">Professional Video Interview Session</p>
+              <div className="bg-gray-100 rounded-lg px-3 py-2 text-sm font-medium text-gray-700">
+                {currentTime.toLocaleTimeString()}
+              </div>
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -230,10 +343,10 @@ export const InterviewChat: React.FC = () => {
                   <p className="text-gray-600 mb-6">{connectionError}</p>
                   {errorType === "credits_exhausted" ? (
                     <Button 
-                      onClick={goToSettings}
+                      onClick={retryConnection}
                       className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg"
                     >
-                      Manage Account
+                      Retry Connection
                     </Button>
                   ) : (
                     <Button 

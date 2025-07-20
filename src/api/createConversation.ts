@@ -1,34 +1,34 @@
 import { IConversation } from "@/types";
-import { settingsAtom } from "@/store/settings";
-import { getDefaultStore } from "jotai";
 
 export const createConversation = async (
-  token: string,
+  userInfo: any
 ): Promise<IConversation> => {
-  console.log("Creating conversation with token:", token?.substring(0, 8) + "...");
+  // Hardcoded credentials
+  const token = "90679945b9fa40b4943fb8c3b64ca59e";
+  const persona_id = "p8e035c0f938";
+  const replica_id = "r880666f8c89";
   
-  // Get settings from Jotai store
-  const settings = getDefaultStore().get(settingsAtom);
+  console.log("Creating conversation with hardcoded token");
   
-  // Add debug logs
-  console.log('Creating conversation with settings:', settings);
-  console.log('Greeting value:', settings.greeting);
-  console.log('Context value:', settings.context);
-  
-  // Build the context string
-  let contextString = "";
-  if (settings.name) {
-    contextString = `You are talking with the user, ${settings.name}. Additional context: `;
-  }
-  contextString += settings.context || "";
+  // Build conversational context with user information
+  const conversationalContext = JSON.stringify({
+    candidate_name: userInfo.name,
+    project_title: userInfo.projectTitle,
+    project_summary: userInfo.projectSummary,
+    skills: userInfo.skills,
+    certificates: userInfo.certificates,
+    education: userInfo.education,
+    experience: userInfo.experience,
+    current_stage: "1",
+    interview_score: null,
+    greeting: "Good Morning"
+  });
   
   const payload = {
-    persona_id: settings.persona || "pb8f5bcd6326",
-    replica_id: settings.replica || "rf4703150052",
-    custom_greeting: settings.greeting !== undefined && settings.greeting !== null 
-      ? settings.greeting 
-      : "Hello! I'm Sarah Mitchell, your AI interviewer. I'll be conducting this technical interview today. I'm excited to learn about your background and experience. Let's start with a brief introduction - could you tell me about your professional journey and what motivates you in your career?",
-    conversational_context: contextString,
+    persona_id: persona_id,
+    replica_id: replica_id,
+    custom_greeting: "Hello! I'm Sarah Mitchell, your AI interviewer. I'll be conducting this technical interview today. I'm excited to learn about your background and experience. Let's start with a brief introduction - could you tell me about your professional journey and what motivates you in your career?",
+    conversational_context: conversationalContext,
     properties: {
       max_call_duration: 1800,
       participant_left_timeout: 60,
@@ -43,7 +43,7 @@ export const createConversation = async (
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "x-api-key": token ?? "",
+        "x-api-key": token,
       },
       body: JSON.stringify(payload),
     });
