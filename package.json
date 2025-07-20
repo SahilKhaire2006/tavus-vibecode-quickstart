@@ -13,6 +13,7 @@
     "@daily-co/daily-js": "^0.73.0",
     "@daily-co/daily-react": "^0.22.0",
     "@radix-ui/react-slot": "^1.1.0",
+    "caniuse-lite": "^1.0.30001727",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "flubber": "^0.4.2",
