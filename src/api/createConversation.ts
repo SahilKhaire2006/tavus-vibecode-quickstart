@@ -24,6 +24,7 @@ export const createConversation = async (
   
   const payload = {
     persona_id: settings.persona || "pb8f5bcd6326",
+    replica_id: settings.replica || "rf4703150052",
     custom_greeting: settings.greeting !== undefined && settings.greeting !== null 
       ? settings.greeting 
       : "Hello! I'm Sarah Mitchell, your AI interviewer. I'll be conducting this technical interview today. I'm excited to learn about your background and experience. Let's start with a brief introduction - could you tell me about your professional journey and what motivates you in your career?",
@@ -31,8 +32,7 @@ export const createConversation = async (
     properties: {
       max_call_duration: 1800,
       participant_left_timeout: 60,
-      enable_recording: false,
-      replica_id: settings.replica || "rf4703150052"
+      enable_recording: false
     }
   };
   
