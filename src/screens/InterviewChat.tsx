@@ -6,6 +6,7 @@ import {
   useParticipantIds,
   useVideoTrack,
   useAudioTrack,
+  useDailyEvent,
 } from "@daily-co/daily-react";
 import Video from "@/components/Video";
 import { conversationAtom } from "@/store/conversation";
@@ -21,6 +22,8 @@ import {
   VideoIcon,
   VideoOffIcon,
   PhoneIcon,
+  Send,
+  Download,
   AlertCircle,
 } from "lucide-react";
 import {
@@ -45,23 +48,6 @@ interface UserInfo {
   experience: string;
 }
 
-const Timer = () => {
-  const [currentTime, setCurrentTime] = useState(new Date());
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentTime(new Date());
-    }, 1000);
-    return () => clearInterval(timer);
-  }, []);
-
-  return (
-    <div className="bg-blue-50 rounded-lg px-3 py-2 text-sm font-medium text-blue-700 border border-blue-200">
-      {currentTime.toLocaleTimeString()}
-    </div>
-  );
-};
-
 export const InterviewChat: React.FC = () => {
   const [conversation, setConversation] = useAtom(conversationAtom);
   const [, setScreenState] = useAtom(screenAtom);
@@ -75,47 +61,68 @@ export const InterviewChat: React.FC = () => {
     education: "",
     experience: ""
   });
-  const [isInitializing, setIsInitializing] = useState(false);
+  const [isInitializing, setIsInitializing] = useState(true);
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const [errorType, setErrorType] = useState<string | null>(null);
   const [interviewerName] = useState("Sarah Mitchell");
   const [interviewerTitle] = useState("Senior Technical Interviewer");
+  const [currentTime, setCurrentTime] = useState(new Date());
 
   const daily = useDaily();
   const localSessionId = useLocalSessionId();
   const localVideo = useVideoTrack(localSessionId);
   const localAudio = useAudioTrack(localSessionId);
-  const isCameraEnabled = localVideo ? !localVideo.isOff : false;
-  const isMicEnabled = localAudio ? !localAudio.isOff : false;
+  const isCameraEnabled = !localVideo.isOff;
+  const isMicEnabled = !localAudio.isOff;
   const remoteParticipantIds = useParticipantIds({ filter: "remote" });
   const [start, setStart] = useState(false);
 
-  const handleFormSubmit = async (e: React.FormEvent) => {
+  // Update current time every second
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setShowForm(false);
     setIsInitializing(true);
-    
-    try {
-      console.log("Creating conversation with user info:", userInfo);
-      const newConversation = await createConversation(userInfo);
-      console.log("Conversation created successfully:", newConversation.conversation_id);
-      setConversation(newConversation);
-      setConnectionError(null);
-    } catch (error: any) {
-      console.error("Failed to create conversation:", error);
-      
-      if (error.message === "CREDITS_EXHAUSTED") {
-        setConnectionError("Your account is out of conversational credits. Please top up your Tavus account at https://platform.tavus.io/ to continue.");
-        setErrorType("credits_exhausted");
-      } else {
-        const errorMessage = error.message || "Unknown error occurred";
-        setConnectionError(`Connection failed: ${errorMessage}`);
-        setErrorType("connection_error");
-      }
-    } finally {
-      setIsInitializing(false);
-    }
   };
+
+  // Initialize conversation with better error handling
+  useEffect(() => {
+    const initializeConversation = async () => {
+      if (!conversation && !showForm) {
+        try {
+          console.log("Initializing conversation with user info:", userInfo);
+
+          const newConversation = await createConversation(userInfo);
+          console.log("Conversation created successfully:", newConversation.conversation_id);
+          setConversation(newConversation);
+          setConnectionError(null);
+        } catch (error: any) {
+          console.error("Failed to create conversation:", error);
+          
+          if (error.message === "CREDITS_EXHAUSTED") {
+            setConnectionError("Your account is out of conversational credits. Please top up your Tavus account at https://platform.tavus.io/ to continue.");
+            setErrorType("credits_exhausted");
+          } else {
+            const errorMessage = error.message || "Unknown error occurred";
+            setConnectionError(`Connection failed: ${errorMessage}`);
+            setErrorType("connection_error");
+          }
+        } finally {
+          setIsInitializing(false);
+        }
+      }
+    };
+
+    if (!showForm && !conversation) {
+      initializeConversation();
+    }
+  }, [conversation, showForm, userInfo, setConversation]);
 
   // Handle participant joining
   useEffect(() => {
@@ -197,7 +204,7 @@ export const InterviewChat: React.FC = () => {
   if (showForm) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-6">
-        <div className="bg-white rounded-xl shadow-lg p-8 w-full max-w-2xl border border-gray-200">
+        <div className="bg-white rounded-xl shadow-lg p-8 w-full max-w-2xl">
           <div className="text-center mb-8">
             <h1 className="text-3xl font-bold text-gray-900 mb-2">Interview Information</h1>
             <p className="text-gray-600">Please fill in your details before starting the interview</p>
@@ -212,7 +219,7 @@ export const InterviewChat: React.FC = () => {
                   value={userInfo.name}
                   onChange={(e) => setUserInfo({...userInfo, name: e.target.value})}
                   placeholder="Enter your full name"
-                  className="w-full bg-white text-gray-900 border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                  className="w-full"
                 />
               </div>
               
@@ -223,7 +230,7 @@ export const InterviewChat: React.FC = () => {
                   value={userInfo.projectTitle}
                   onChange={(e) => setUserInfo({...userInfo, projectTitle: e.target.value})}
                   placeholder="Your main project title"
-                  className="w-full bg-white text-gray-900 border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                  className="w-full"
                 />
               </div>
             </div>
@@ -235,7 +242,7 @@ export const InterviewChat: React.FC = () => {
                 value={userInfo.projectSummary}
                 onChange={(e) => setUserInfo({...userInfo, projectSummary: e.target.value})}
                 placeholder="Brief description of your project"
-                className="w-full h-24 px-3 py-2 bg-white text-gray-900 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full h-24 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
             
@@ -247,7 +254,7 @@ export const InterviewChat: React.FC = () => {
                   value={userInfo.skills}
                   onChange={(e) => setUserInfo({...userInfo, skills: e.target.value})}
                   placeholder="React.js, Node.js, MongoDB"
-                  className="w-full bg-white text-gray-900 border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                  className="w-full"
                 />
               </div>
               
@@ -257,7 +264,7 @@ export const InterviewChat: React.FC = () => {
                   value={userInfo.certificates}
                   onChange={(e) => setUserInfo({...userInfo, certificates: e.target.value})}
                   placeholder="Your certifications"
-                  className="w-full bg-white text-gray-900 border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                  className="w-full"
                 />
               </div>
             </div>
@@ -269,7 +276,7 @@ export const InterviewChat: React.FC = () => {
                 value={userInfo.education}
                 onChange={(e) => setUserInfo({...userInfo, education: e.target.value})}
                 placeholder="Your educational background"
-                className="w-full bg-white text-gray-900 border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                className="w-full"
               />
             </div>
             
@@ -280,16 +287,15 @@ export const InterviewChat: React.FC = () => {
                 value={userInfo.experience}
                 onChange={(e) => setUserInfo({...userInfo, experience: e.target.value})}
                 placeholder="Your work experience"
-                className="w-full h-24 px-3 py-2 bg-white text-gray-900 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full h-24 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
             
             <Button
               type="submit"
-              disabled={isInitializing}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg text-lg font-medium disabled:opacity-50"
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg text-lg font-medium"
             >
-              {isInitializing ? "Starting Interview..." : "Start Interview"}
+              Start Interview
             </Button>
           </form>
         </div>
@@ -308,7 +314,9 @@ export const InterviewChat: React.FC = () => {
             </div>
             <div>
               <h1 className="text-xl font-semibold text-gray-900">Technical Interview</h1>
-              <p className="text-sm text-gray-600">Professional Video Interview</p>
+              <div className="bg-gray-100 rounded-lg px-3 py-2 text-sm font-medium text-gray-700">
+                {currentTime.toLocaleTimeString()}
+              </div>
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -333,12 +341,21 @@ export const InterviewChat: React.FC = () => {
                 <div className="text-center max-w-md">
                   <h3 className="text-lg font-semibold text-gray-900 mb-2">Connection Issue</h3>
                   <p className="text-gray-600 mb-6">{connectionError}</p>
-                  <Button 
-                    onClick={retryConnection}
-                    className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg"
-                  >
-                    Retry Connection
-                  </Button>
+                  {errorType === "credits_exhausted" ? (
+                    <Button 
+                      onClick={retryConnection}
+                      className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg"
+                    >
+                      Retry Connection
+                    </Button>
+                  ) : (
+                    <Button 
+                      onClick={retryConnection}
+                      className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg"
+                    >
+                      Retry Connection
+                    </Button>
+                  )}
                 </div>
               </div>
             ) : remoteParticipantIds?.length > 0 ? (
