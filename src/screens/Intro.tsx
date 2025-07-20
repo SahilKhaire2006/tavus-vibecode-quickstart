@@ -33,7 +33,7 @@ export const Intro: React.FC = () => {
             fontFamily: 'Inter, sans-serif',
             background: 'rgba(0,0,0,0.3)'
           }}>
-          <img src="/public/images/vector.svg" alt="Logo" className="mt-2 mb-1" style={{ width: '40px', height: 'auto' }} />
+          <img src="/images/vector.svg" alt="Logo" className="mt-2 mb-1" style={{ width: '40px', height: 'auto' }} />
 
           <h1 className="text-xl font-bold text-white mb-1" style={{ fontFamily: 'Source Code Pro, monospace' }}>CVI Demo Playground</h1>
 
