@@ -78,7 +78,7 @@ export const InterviewChat: React.FC = () => {
   const [isInitializing, setIsInitializing] = useState(false);
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const [errorType, setErrorType] = useState<string | null>(null);
-  const [interviewerName] = useState("Sarah Mitchell");
+  const [interviewerName] = useState("Michael Johnson");
   const [interviewerTitle] = useState("Senior Technical Interviewer");
 
   const daily = useDaily();
@@ -298,17 +298,17 @@ export const InterviewChat: React.FC = () => {
   }
 
   return (
-    <div className="h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex flex-col">
+    <div className="h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex flex-col overflow-hidden">
       {/* Professional Header */}
-      <div className="bg-white shadow-sm border-b border-gray-200 px-6 py-4">
+      <div className="bg-white shadow-sm border-b border-gray-200 px-4 py-3 flex-shrink-0 sticky top-0 z-10">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
-              <VideoIcon className="size-6 text-white" />
+            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+              <VideoIcon className="size-4 text-white" />
             </div>
             <div>
-              <h1 className="text-xl font-semibold text-gray-900">Technical Interview</h1>
-              <p className="text-sm text-gray-600">Professional Video Interview</p>
+              <h1 className="text-lg font-semibold text-gray-900">Technical Interview</h1>
+              <p className="text-xs text-gray-600">Professional Video Interview</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -322,11 +322,11 @@ export const InterviewChat: React.FC = () => {
       </div>
 
       {/* Main Video Area */}
-      <div className="flex-1 p-6">
-        <div className="h-full bg-white rounded-xl shadow-lg overflow-hidden border border-gray-200">
+      <div className="flex-1 p-4 overflow-hidden">
+        <div className="h-full bg-white rounded-lg shadow-lg overflow-hidden border border-gray-200">
           <div className="h-full relative">
             {connectionError ? (
-              <div className="flex h-full items-center justify-center flex-col gap-6 bg-gray-50">
+              <div className="flex h-full items-center justify-center flex-col gap-4 bg-gray-50">
                 <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center">
                   <AlertCircle className="size-8 text-red-600" />
                 </div>
@@ -349,7 +349,7 @@ export const InterviewChat: React.FC = () => {
                   className="w-full h-full"
                   tileClassName="!object-cover"
                 />
-                
+
                 {/* Interviewer info overlay */}
                 <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-sm rounded-lg px-4 py-2 shadow-sm">
                   <div className="flex items-center gap-3">
@@ -364,7 +364,7 @@ export const InterviewChat: React.FC = () => {
                 </div>
               </>
             ) : (
-              <div className="flex h-full items-center justify-center flex-col gap-6 bg-gray-50">
+              <div className="flex h-full items-center justify-center flex-col gap-4 bg-gray-50">
                 <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center">
                   <l-quantum
                     size="32"
@@ -385,7 +385,7 @@ export const InterviewChat: React.FC = () => {
 
             {/* User video (picture-in-picture) */}
             {localSessionId && (
-              <div className="absolute bottom-4 right-4 w-48 h-36 bg-gray-900 rounded-lg overflow-hidden shadow-lg border-2 border-white">
+              <div className="absolute bottom-4 right-4 w-32 h-24 sm:w-48 sm:h-36 bg-gray-900 rounded-lg overflow-hidden shadow-lg border-2 border-white">
                 <Video
                   id={localSessionId}
                   className="w-full h-full"
@@ -401,7 +401,7 @@ export const InterviewChat: React.FC = () => {
       </div>
 
       {/* Control Panel */}
-      <div className="bg-white border-t border-gray-200 px-6 py-4">
+      <div className="bg-white border-t border-gray-200 px-4 py-3 flex-shrink-0">
         <div className="flex items-center justify-center gap-4">
           <Button
             onClick={toggleAudio}
@@ -443,7 +443,7 @@ export const InterviewChat: React.FC = () => {
           </Button>
         </div>
         
-        <div className="flex items-center justify-center mt-3 gap-6 text-sm text-gray-600">
+        <div className="flex items-center justify-center mt-2 gap-4 text-xs sm:text-sm text-gray-600">
           <div className="flex items-center gap-2">
             <div className={cn("w-2 h-2 rounded-full", isMicEnabled ? "bg-green-500" : "bg-red-500")}></div>
             <span>{isMicEnabled ? "Microphone On" : "Microphone Off"}</span>
