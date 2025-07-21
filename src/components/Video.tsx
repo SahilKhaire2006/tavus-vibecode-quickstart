@@ -22,7 +22,7 @@ export default function Video({
         automirror
         sessionId={id}
         type="video"
-        className={cn("size-full object-cover", tileClassName, {
+        className={cn("size-full", tileClassName, {
           hidden: videoState.isOff,
         })}
       />

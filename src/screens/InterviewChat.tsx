@@ -346,7 +346,7 @@ export const InterviewChat: React.FC = () => {
 
       {/* Main Video Area */}
       <div className="flex-1 p-4 min-h-0">
-        <div className="h-full bg-gray-900 rounded-lg shadow-lg overflow-hidden border border-gray-300 relative">
+        <div className="h-full bg-gray-900 rounded-lg shadow-lg overflow-hidden border border-gray-300 relative flex items-center justify-center">
             {connectionError ? (
               <div className="flex h-full items-center justify-center flex-col gap-6 bg-gray-100">
                 <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center">
@@ -377,8 +377,8 @@ export const InterviewChat: React.FC = () => {
                 {/* Main interviewer video */}
                 <Video
                   id={remoteParticipantIds[0]}
-                  className="w-full h-full"
-                  tileClassName="!object-cover"
+                  className="w-full h-full max-w-full max-h-full"
+                  tileClassName="!object-contain w-full h-full"
                 />
                 
                 {/* Interviewer info overlay */}
@@ -396,11 +396,11 @@ export const InterviewChat: React.FC = () => {
                 
                 {/* User video (picture-in-picture) */}
                 {localSessionId && (
-                  <div className="absolute bottom-4 right-4 w-48 h-36 bg-gray-900 rounded-lg overflow-hidden shadow-xl border-2 border-blue-500">
+                  <div className="absolute bottom-6 right-6 w-52 h-40 bg-gray-900 rounded-lg overflow-hidden shadow-xl border-2 border-blue-500">
                     <Video
                       id={localSessionId}
                       className="w-full h-full"
-                      tileClassName="!object-cover"
+                      tileClassName="!object-cover w-full h-full"
                     />
                     <div className="absolute bottom-2 left-2 bg-black/70 text-white px-2 py-1 rounded text-xs font-medium">
                       You
