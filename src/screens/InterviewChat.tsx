@@ -64,7 +64,7 @@ export const InterviewChat: React.FC = () => {
   const [isInitializing, setIsInitializing] = useState(true);
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const [errorType, setErrorType] = useState<string | null>(null);
-  const [interviewerName] = useState("Sarah Mitchell");
+  const [interviewerName] = useState("Michael Johnson");
   const [interviewerTitle] = useState("Senior Technical Interviewer");
   const [currentTime, setCurrentTime] = useState(new Date());
 

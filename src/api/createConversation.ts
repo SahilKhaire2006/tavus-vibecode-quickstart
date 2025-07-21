@@ -27,7 +27,7 @@ export const createConversation = async (
   const payload = {
     persona_id: persona_id,
     replica_id: replica_id,
-    custom_greeting: "Hello! I'm Sarah Mitchell, your AI interviewer. I'll be conducting this technical interview today. I'm excited to learn about your background and experience. Let's start with a brief introduction - could you tell me about your professional journey and what motivates you in your career?",
+    custom_greeting: "Hello! I'm Michael Johnson, your AI interviewer. I'll be conducting this technical interview today. I'm excited to learn about your background and experience. Let's start with a brief introduction - could you tell me about your professional journey and what motivates you in your career?",
     conversational_context: conversationalContext,
     properties: {
       max_call_duration: 1800,
