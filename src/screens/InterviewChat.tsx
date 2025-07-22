@@ -187,16 +187,19 @@ export const InterviewChat: React.FC = () => {
     "app-message",
     useCallback((event: any) => {
       if (event.data) {
-        const message: ConversationMessage = {
-          id: Date.now().toString(),
-          timestamp: new Date(),
-          speaker: event.data.event_type?.includes('user') ? 'user' : 'ai',
-          message: event.data.properties?.text || JSON.stringify(event.data),
-          type: 'app_message'
-        };
-        
-        setConversationMessages(prev => [...prev, message]);
-        console.log('Conversation event:', event.data);
+        // Only capture actual speech/utterance events with clean text
+        if (event.data.event_type === 'conversation.utterance' && event.data.properties?.speech) {
+          const message: ConversationMessage = {
+            id: Date.now().toString(),
+            timestamp: new Date(),
+            speaker: event.data.properties?.role === 'user' ? 'user' : 'ai',
+            message: event.data.properties.speech,
+            type: 'app_message'
+          };
+          
+          setConversationMessages(prev => [...prev, message]);
+          console.log('Speech captured:', event.data.properties.speech);
+        }
       }
     }, [setConversationMessages])
   );
@@ -282,22 +285,46 @@ export const InterviewChat: React.FC = () => {
     doc.text(`Date: ${new Date().toLocaleDateString()}`, 20, yPosition);
     yPosition += 15;
 
-    // Conversation
+    // Add separator line
+    doc.setLineWidth(0.5);
+    doc.line(20, yPosition, 190, yPosition);
+    yPosition += 10;
+
+    // Conversation with clean formatting
     doc.setFontSize(10);
     conversationMessages.forEach((message) => {
-      const speaker = message.speaker === 'user' ? 'Candidate' : 'Interviewer';
+      const speaker = message.speaker === 'user' ? 'User' : 'Interviewer';
       const timestamp = message.timestamp.toLocaleTimeString();
-      const text = `[${timestamp}] ${speaker}: ${message.message}`;
       
-      const lines = doc.splitTextToSize(text, 170);
-      
-      if (yPosition + (lines.length * 5) > pageHeight - 20) {
+      // Add timestamp
+      if (yPosition + 15 > pageHeight - 20) {
         doc.addPage();
         yPosition = 20;
       }
       
-      doc.text(lines, 20, yPosition);
-      yPosition += lines.length * 5 + 3;
+      doc.setFontSize(8);
+      doc.setTextColor(100, 100, 100);
+      doc.text(`[${timestamp}]`, 20, yPosition);
+      yPosition += 5;
+      
+      // Add speaker name
+      doc.setFontSize(10);
+      doc.setTextColor(0, 0, 0);
+      doc.setFont(undefined, 'bold');
+      doc.text(`${speaker}:`, 20, yPosition);
+      yPosition += 5;
+      
+      // Add message content
+      doc.setFont(undefined, 'normal');
+      const messageLines = doc.splitTextToSize(message.message, 170);
+      
+      if (yPosition + (messageLines.length * 4) > pageHeight - 20) {
+        doc.addPage();
+        yPosition = 20;
+      }
+      
+      doc.text(messageLines, 20, yPosition);
+      yPosition += messageLines.length * 4 + 8; // Extra space between messages
     });
 
     // Add evaluation if available
@@ -306,10 +333,17 @@ export const InterviewChat: React.FC = () => {
       yPosition = 20;
       
       doc.setFontSize(14);
+      doc.setFont(undefined, 'bold');
       doc.text('Interview Evaluation', 20, yPosition);
       yPosition += 15;
       
+      // Add separator line
+      doc.setLineWidth(0.5);
+      doc.line(20, yPosition, 190, yPosition);
+      yPosition += 10;
+      
       doc.setFontSize(10);
+      doc.setFont(undefined, 'normal');
       doc.text(`Technical Knowledge: ${evaluationMetrics.technicalKnowledge.toFixed(1)}%`, 20, yPosition);
       yPosition += 7;
       doc.text(`Communication Skills: ${evaluationMetrics.communicationSkills.toFixed(1)}%`, 20, yPosition);
@@ -318,11 +352,14 @@ export const InterviewChat: React.FC = () => {
       yPosition += 7;
       doc.text(`Problem Solving: ${evaluationMetrics.problemSolving.toFixed(1)}%`, 20, yPosition);
       yPosition += 7;
+      doc.setFont(undefined, 'bold');
       doc.text(`Overall Score: ${evaluationMetrics.overallScore.toFixed(1)}%`, 20, yPosition);
       yPosition += 15;
       
+      doc.setFont(undefined, 'bold');
       doc.text('Feedback:', 20, yPosition);
       yPosition += 7;
+      doc.setFont(undefined, 'normal');
       evaluationMetrics.feedback.forEach(feedback => {
         doc.text(`• ${feedback}`, 25, yPosition);
         yPosition += 7;

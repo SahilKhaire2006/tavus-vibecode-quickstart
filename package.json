@@ -19,6 +19,7 @@
     "framer-motion": "^11.15.0",
     "jotai": "^2.10.3",
     "js-cookie": "^3.0.5",
+    "jspdf": "^3.0.1",
     "ldrs": "^1.0.2",
     "lucide-react": "^0.461.0",
     "react": "^18.3.1",
