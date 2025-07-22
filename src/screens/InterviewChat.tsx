@@ -35,6 +35,8 @@ import {
 import { TIME_LIMIT } from "@/config";
 import { quantum } from 'ldrs';
 import { cn } from "@/lib/utils";
+import { conversationMessagesAtom, ConversationMessage, evaluationMetricsAtom, EvaluationMetrics } from "@/store/conversation";
+import jsPDF from 'jspdf';
 
 quantum.register();
 
@@ -67,6 +69,8 @@ export const InterviewChat: React.FC = () => {
   const [interviewerName] = useState("Michael Johnson");
   const [interviewerTitle] = useState("Senior Technical Interviewer");
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [conversationMessages, setConversationMessages] = useAtom(conversationMessagesAtom);
+  const [evaluationMetrics, setEvaluationMetrics] = useAtom(evaluationMetricsAtom);
 
   const daily = useDaily();
   const localSessionId = useLocalSessionId();
@@ -89,6 +93,9 @@ export const InterviewChat: React.FC = () => {
     e.preventDefault();
     setShowForm(false);
     setIsInitializing(true);
+    // Clear previous conversation data
+    setConversationMessages([]);
+    setEvaluationMetrics(null);
   };
 
   // Initialize conversation with better error handling
@@ -175,6 +182,156 @@ export const InterviewChat: React.FC = () => {
     }
   }, [conversation?.conversation_url, daily]);
 
+  // Listen for conversation events and transcripts
+  useDailyEvent(
+    "app-message",
+    useCallback((event: any) => {
+      if (event.data) {
+        const message: ConversationMessage = {
+          id: Date.now().toString(),
+          timestamp: new Date(),
+          speaker: event.data.event_type?.includes('user') ? 'user' : 'ai',
+          message: event.data.properties?.text || JSON.stringify(event.data),
+          type: 'app_message'
+        };
+        
+        setConversationMessages(prev => [...prev, message]);
+        console.log('Conversation event:', event.data);
+      }
+    }, [setConversationMessages])
+  );
+
+  // Listen for transcription events (if available)
+  useDailyEvent(
+    "transcription-message",
+    useCallback((event: any) => {
+      if (event.text && event.text.trim()) {
+        const message: ConversationMessage = {
+          id: Date.now().toString(),
+          timestamp: new Date(),
+          speaker: event.participantId === localSessionId ? 'user' : 'ai',
+          message: event.text,
+          type: 'transcript'
+        };
+        
+        setConversationMessages(prev => [...prev, message]);
+      }
+    }, [localSessionId, setConversationMessages])
+  );
+
+  // Generate evaluation based on conversation
+  const generateEvaluation = useCallback(() => {
+    if (conversationMessages.length === 0) return;
+
+    // Simple evaluation logic - you can enhance this
+    const userMessages = conversationMessages.filter(msg => msg.speaker === 'user');
+    const totalMessages = userMessages.length;
+    
+    // Basic scoring algorithm
+    const avgMessageLength = userMessages.reduce((acc, msg) => acc + msg.message.length, 0) / totalMessages || 0;
+    const technicalKeywords = ['javascript', 'react', 'node', 'database', 'api', 'algorithm', 'function', 'variable'];
+    const technicalScore = userMessages.reduce((score, msg) => {
+      const matches = technicalKeywords.filter(keyword => 
+        msg.message.toLowerCase().includes(keyword)
+      ).length;
+      return score + matches;
+    }, 0);
+
+    const evaluation: EvaluationMetrics = {
+      technicalKnowledge: Math.min(100, (technicalScore / totalMessages) * 20),
+      communicationSkills: Math.min(100, (avgMessageLength / 50) * 100),
+      confidence: Math.min(100, totalMessages * 10),
+      problemSolving: Math.min(100, (technicalScore / 2) * 10),
+      overallScore: 0,
+      feedback: [
+        `Participated in ${totalMessages} exchanges`,
+        `Average response length: ${Math.round(avgMessageLength)} characters`,
+        `Technical keywords mentioned: ${technicalScore}`
+      ]
+    };
+    
+    evaluation.overallScore = (
+      evaluation.technicalKnowledge + 
+      evaluation.communicationSkills + 
+      evaluation.confidence + 
+      evaluation.problemSolving
+    ) / 4;
+
+    setEvaluationMetrics(evaluation);
+  }, [conversationMessages, setEvaluationMetrics]);
+
+  // Download conversation as PDF
+  const downloadConversationPDF = useCallback(() => {
+    if (conversationMessages.length === 0) {
+      alert('No conversation to download');
+      return;
+    }
+
+    const doc = new jsPDF();
+    const pageHeight = doc.internal.pageSize.height;
+    let yPosition = 20;
+
+    // Title
+    doc.setFontSize(16);
+    doc.text('Interview Conversation Transcript', 20, yPosition);
+    yPosition += 10;
+    
+    doc.setFontSize(12);
+    doc.text(`Candidate: ${userInfo.name}`, 20, yPosition);
+    yPosition += 5;
+    doc.text(`Date: ${new Date().toLocaleDateString()}`, 20, yPosition);
+    yPosition += 15;
+
+    // Conversation
+    doc.setFontSize(10);
+    conversationMessages.forEach((message) => {
+      const speaker = message.speaker === 'user' ? 'Candidate' : 'Interviewer';
+      const timestamp = message.timestamp.toLocaleTimeString();
+      const text = `[${timestamp}] ${speaker}: ${message.message}`;
+      
+      const lines = doc.splitTextToSize(text, 170);
+      
+      if (yPosition + (lines.length * 5) > pageHeight - 20) {
+        doc.addPage();
+        yPosition = 20;
+      }
+      
+      doc.text(lines, 20, yPosition);
+      yPosition += lines.length * 5 + 3;
+    });
+
+    // Add evaluation if available
+    if (evaluationMetrics) {
+      doc.addPage();
+      yPosition = 20;
+      
+      doc.setFontSize(14);
+      doc.text('Interview Evaluation', 20, yPosition);
+      yPosition += 15;
+      
+      doc.setFontSize(10);
+      doc.text(`Technical Knowledge: ${evaluationMetrics.technicalKnowledge.toFixed(1)}%`, 20, yPosition);
+      yPosition += 7;
+      doc.text(`Communication Skills: ${evaluationMetrics.communicationSkills.toFixed(1)}%`, 20, yPosition);
+      yPosition += 7;
+      doc.text(`Confidence: ${evaluationMetrics.confidence.toFixed(1)}%`, 20, yPosition);
+      yPosition += 7;
+      doc.text(`Problem Solving: ${evaluationMetrics.problemSolving.toFixed(1)}%`, 20, yPosition);
+      yPosition += 7;
+      doc.text(`Overall Score: ${evaluationMetrics.overallScore.toFixed(1)}%`, 20, yPosition);
+      yPosition += 15;
+      
+      doc.text('Feedback:', 20, yPosition);
+      yPosition += 7;
+      evaluationMetrics.feedback.forEach(feedback => {
+        doc.text(`• ${feedback}`, 25, yPosition);
+        yPosition += 7;
+      });
+    }
+
+    doc.save(`interview-transcript-${userInfo.name}-${new Date().toISOString().split('T')[0]}.pdf`);
+  }, [conversationMessages, evaluationMetrics, userInfo.name]);
+
   const toggleVideo = useCallback(() => {
     daily?.setLocalVideo(!isCameraEnabled);
   }, [daily, isCameraEnabled]);
@@ -184,6 +341,9 @@ export const InterviewChat: React.FC = () => {
   }, [daily, isMicEnabled]);
 
   const leaveConversation = useCallback(() => {
+    // Generate evaluation before leaving
+    generateEvaluation();
+    
     daily?.leave();
     daily?.destroy();
     if (conversation?.conversation_id) {
@@ -192,7 +352,7 @@ export const InterviewChat: React.FC = () => {
     setConversation(null);
     clearSessionTime();
     setScreenState({ currentScreen: "finalScreen" });
-  }, [daily, conversation, setConversation, setScreenState]);
+  }, [daily, conversation, setConversation, setScreenState, generateEvaluation]);
 
   const retryConnection = () => {
     setConnectionError(null);
@@ -433,6 +593,15 @@ export const InterviewChat: React.FC = () => {
       {/* Control Panel */}
       <div className="bg-white border-t border-gray-200 px-6 py-4 flex-shrink-0">
         <div className="flex items-center justify-center gap-4">
+          {conversationMessages.length > 0 && (
+            <Button
+              onClick={downloadConversationPDF}
+              className="w-14 h-14 rounded-full border-2 bg-green-500 hover:bg-green-600 border-green-500 text-white transition-all duration-200 shadow-lg"
+            >
+              <Download className="size-6" />
+            </Button>
+          )}
+          
           <Button
             onClick={toggleAudio}
             className={cn(
