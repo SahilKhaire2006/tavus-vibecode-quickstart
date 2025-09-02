@@ -5,8 +5,8 @@ export const createConversation = async (
 ): Promise<IConversation> => {
   // Hardcoded credentials
   const token = "90679945b9fa40b4943fb8c3b64ca59e";
-  const persona_id = "p8e035c0f938";
-  const replica_id = "r880666f8c89";
+  const persona_id = "p0fe18edf69d";
+  const replica_id = "rf4703150052";
   
   console.log("Creating conversation with hardcoded token");
   

@@ -106,7 +106,7 @@ export const FinalScreen: React.FC = () => {
               Return to Main Screen
             </Button>
           </div>
-          <Button
+          {/* <Button
             onClick={handleReturn}
             className="relative z-20 flex items-center justify-center gap-2 rounded-3xl border border-[rgba(255,255,255,0.3)] px-8 py-3 text-base text-white transition-all duration-200 hover:text-primary disabled:opacity-50"
             style={{
@@ -122,7 +122,7 @@ export const FinalScreen: React.FC = () => {
             }}
           >
             Return to Main Screen
-          </Button>
+          </Button> */}
         </div>
       </AnimatedTextBlockWrapper>
     </DialogWrapper>
