@@ -126,7 +126,13 @@ export const InterviewChat: React.FC = () => {
             setErrorType("credits_exhausted");
           } else {
             const errorMessage = error.message || "Unknown error occurred";
-            setConnectionError(`Connection failed: ${errorMessage}`);
+            if (errorMessage.includes("Invalid persona_id")) {
+              setConnectionError(`Persona Error: The persona ID 'p25e042a1eb6' is not available in your Tavus account. Please check your Tavus dashboard at https://platform.tavus.io/personas to see available personas.`);
+            } else if (errorMessage.includes("Invalid API token")) {
+              setConnectionError("Invalid API token. Please check your Tavus API key and try again.");
+            } else {
+              setConnectionError(`Connection failed: ${errorMessage}`);
+            }
             setErrorType("connection_error");
           }
         } finally {
