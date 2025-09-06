@@ -3,12 +3,14 @@ import { IConversation } from "@/types";
 export const createConversation = async (
   userInfo: any
 ): Promise<IConversation> => {
-  // Hardcoded credentials
-  const token = "90679945b9fa40b4943fb8c3b64ca59e";
+  // Get token from localStorage or use provided token
+  const token = localStorage.getItem('tavus-token') || "651e7be95ad2430888c81aa1a56e04f7";
   const persona_id = "p25e042a1eb6";
   const replica_id = "rf4703150052";
   
-  console.log("Creating conversation with hardcoded token");
+  console.log("Creating conversation with token:", token ? "Token provided" : "No token");
+  console.log("Using persona_id:", persona_id);
+  console.log("Using replica_id:", replica_id);
   
   // Build conversational context with user information
   const conversationalContext = JSON.stringify({

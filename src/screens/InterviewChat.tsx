@@ -101,9 +101,18 @@ export const InterviewChat: React.FC = () => {
   // Initialize conversation with better error handling
   useEffect(() => {
     const initializeConversation = async () => {
-      if (!conversation && !showForm) {
+      if (!conversation && !showForm && userInfo.name) {
         try {
           console.log("Initializing conversation with user info:", userInfo);
+          
+          // Check if token exists
+          const token = localStorage.getItem('tavus-token');
+          if (!token) {
+            setConnectionError("Please enter your Tavus API token first");
+            setErrorType("no_token");
+            setIsInitializing(false);
+            return;
+          }
 
           const newConversation = await createConversation(userInfo);
           console.log("Conversation created successfully:", newConversation.conversation_id);
